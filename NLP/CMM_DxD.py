@@ -2,11 +2,10 @@ import numpy as np
 
 
 def generate_vocabulary(text):
-    # Rimuovi eventuali segni di punteggiatura e rendi tutte le parole minuscole
-    VOC = list(dict.fromkeys(text.lower().split()))  # Rimuove le ripetizioni mantenendo l'ordine
-    return VOC
+    return list(dict.fromkeys(text.lower().split()))
 
 
+### We retrieve ALL the words (even the replicated) from our text
 def generate_words(text):
     return text.lower().split()
 
@@ -39,63 +38,75 @@ text = ("La tecnologia ha trasformato radicalmente il modo in cui viviamo e lavo
         "è un potente strumento che ha il potenziale di migliorare la nostra vita in molti modi, ma deve essere "
         "gestita con attenzione per garantire che i benefici siano equamente distribuiti ciao")
 
-VOC = generate_vocabulary(text)
+### We define our vocabulary, composed of unique terms in the text
+vocabulary = generate_vocabulary(text)
+print("Vocabulary size:", len(vocabulary))
+
 words = generate_words(text)
-onehot_vectors = np.identity(len(VOC))
-len_seq = 4
+
+### We define the window_size, that is the length of the sequence we want to consider in order to predict the newt word
+window_size = 4
+print("Window size:", window_size, "\n")
+
+### We create one-hot vectors for each word in our vocabulary (so its size is based on our vocabulary's size)
+onehot_vectors = np.identity(len(vocabulary))
+print(f"There are {len(onehot_vectors)} one-hot vectors for each word in the vocabulary:\n", onehot_vectors, "\n")
 
 
+### This return the index of a specific word in our pre-defined vocabulary
 def index(word):
-    return VOC.index(word)
+    return vocabulary.index(word)
 
 
+print(f"We combine our one-hot vectors from {window_size}x{len(vocabulary)} to 1x{window_size * len(vocabulary)}\n")
+### We are combining our one-hot vectors into a single one.
 def seq(vector):
     s1 = vector[0]
     s2 = vector[1]
     s3 = vector[2]
     s4 = vector[3]
 
-    return onehot_vectors[[index(s1), index(s2), index(s3), index(s4)]].reshape(1, len_seq * len(VOC))
+    combined_vector = onehot_vectors[[index(s1), index(s2), index(s3), index(s4)]].reshape(1, window_size * len(vocabulary))
+    return combined_vector
 
 
-def create_CMM(RM):
-    temp = np.zeros((len(VOC), len(VOC)))
+def create_CMM():
+    CMM = np.zeros((len(vocabulary), len(vocabulary)))
 
-    for s in range(len(words) - 4):
-        sequence = words[s:s + 4]
-        target = words[s + 4]
+    for s in range(len(words) - window_size):
+        sequence = words[s:s + window_size]
+        target = words[s + window_size]
 
-        v1 = np.transpose(seq(sequence))
-        #v1 è un vettore di 992 mentre RM 248x992 quindi il risultato è una colonna di 248
-        v1_reduced = np.matmul(RM, v1)
+        m1 = np.transpose(seq(sequence))
+        m1_reduced = np.matmul(RM, m1)
 
-        v2 = onehot_vectors[[index(target)]]
+        m2 = onehot_vectors[[index(target)]]
 
-        temp += np.matmul(v1_reduced, v2)
+        CMM += np.matmul(m1_reduced, m2)
 
-    return temp
+    print("Combined one-hot vector transposed and reduced x one-hot vector of the target")
+    print(np.shape(m1_reduced), "x", np.shape(m2))
+
+    return CMM
 
 
 def generate_random_matrix(rows, cols, mean=0, std_dev=1):
     return np.random.normal(loc=mean, scale=std_dev, size=(rows, cols))
 
+RM = generate_random_matrix(len(vocabulary), window_size * len(vocabulary))
+print("\nRandom Matrix (RM):", np.shape(RM), "\n", RM, "\n")
+CMM = create_CMM()
+print("\nCorrelation Matrix (CMM):", np.shape(CMM), "\n", CMM, "\n")
 
+current_text = "La tecnologia ha trasformato"
+print(current_text)
 
-RM = generate_random_matrix(len(VOC), len_seq * len(VOC))
-CMM = create_CMM(RM)
-
-predicted_text = "La tecnologia ha trasformato"
-
-for i in range(4, len(words)):
+for i in range(window_size, len(words)):
     vector = words[i - 4:i]
 
     sequence = seq(vector)
+    vector_reduced = np.matmul(sequence, np.transpose(RM))
 
-    reduced_vector = np.matmul(sequence, np.transpose(RM))
-
-    out = np.matmul(reduced_vector, CMM)
-
-    predicted_text = predicted_text + " " + VOC[np.argmax(out)]
-
-print(predicted_text)
+    output = np.matmul(vector_reduced, CMM)
+    print(vocabulary[np.argmax(output)])
 
