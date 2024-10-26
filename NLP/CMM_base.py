@@ -1,9 +1,9 @@
 import numpy as np
 
-### From our lesson, this is the text that we first used
+### From our lesson, this is the text.txt that we first used
 text = "the cat is on the table"
 
-### We define our vocabulary, composed of unique terms in the text
+### We define our vocabulary, composed of unique terms in the text.txt
 vocabulary = ["cat", "is", "the", "on", "table"]
 print("Vocabulary size:", len(vocabulary))
 
@@ -30,7 +30,7 @@ def seq(s1, s2, s3, s4):
     return combined_vector
 
 
-### We define the correlation matrix between the words of our text, in order to predict the next word based on a sequence.
+### We define the correlation matrix between the words of our text.txt, in order to predict the next word based on a sequence.
 ### - We combine one-hot vectors of a specific sequence, passing from {4 x len(vocabulary)} to {1 x window_size*len(vocabulary)}
 ### - We transpose our matrix {1 x window_size * len(vocabulary)} into a matrix {window_size * len(vocabulary) x 1}
 ###     in order to multiply the two matrix

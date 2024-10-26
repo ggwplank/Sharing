@@ -5,7 +5,7 @@ def generate_vocabulary(text):
     return list(dict.fromkeys(text.lower().split()))
 
 
-### We retrieve ALL the words (even the replicated) from our text
+### We retrieve ALL the words (even the replicated) from our text.txt
 def generate_words(text):
     return text.lower().split()
 
@@ -38,7 +38,7 @@ text = ("La tecnologia ha trasformato radicalmente il modo in cui viviamo e lavo
         "è un potente strumento che ha il potenziale di migliorare la nostra vita in molti modi, ma deve essere "
         "gestita con attenzione per garantire che i benefici siano equamente distribuiti ciao")
 
-### We define our vocabulary, composed of unique terms in the text
+### We define our vocabulary, composed of unique terms in the text.txt
 vocabulary = generate_vocabulary(text)
 print("Vocabulary size:", len(vocabulary))
 

@@ -5,47 +5,22 @@ def generate_vocabulary(text):
     return list(dict.fromkeys(text.lower().split()))
 
 
-### We retrieve ALL the words (even the replicated) from our text
+### We retrieve ALL the words (even the replicated) from our text.txt
 def generate_words(text):
     return text.lower().split()
 
 
-text = ("La tecnologia ha trasformato radicalmente il modo in cui viviamo e lavoriamo, influenzando quasi ogni aspetto "
-        "della nostra vita quotidiana. Negli ultimi decenni, l'avvento di Internet ha rivoluzionato la comunicazione, "
-        "rendendo possibile connettersi con persone in tutto il mondo con pochi clic. Inoltre, l'evoluzione degli "
-        "smartphone ha portato a una disponibilità di informazioni praticamente illimitata a portata di mano. Oggi, "
-        "possiamo accedere a notizie, social media, video, e applicazioni che ci permettono di lavorare, imparare, "
-        "e divertirci, tutto tramite un dispositivo tascabile. Anche il settore della salute ha subito grandi "
-        "cambiamenti grazie alla tecnologia. L'intelligenza artificiale viene utilizzata per analizzare enormi "
-        "quantità di dati medici, aiutando i medici a fare diagnosi più accurate e a sviluppare piani di trattamento "
-        "personalizzati. Inoltre, dispositivi come smartwatch e fitness tracker monitorano la nostra attività fisica, "
-        "il sonno, e il battito cardiaco, permettendoci di prendere decisioni informate sulla nostra salute. La "
-        "telemedicina, che consente ai pazienti di consultare i medici da remoto, è diventata sempre più popolare, "
-        "soprattutto durante la pandemia di COVID-19, rendendo le cure accessibili a un numero maggiore di persone. "
-        "Nel mondo del lavoro, la digitalizzazione ha cambiato la natura di molte professioni. Mentre alcune attività "
-        "ripetitive sono state automatizzate, sono emerse nuove opportunità nel campo della programmazione, "
-        "della gestione dei dati e della cybersecurity. Molte aziende ora permettono ai loro dipendenti di lavorare "
-        "da casa, grazie alle piattaforme di collaborazione online e agli strumenti di videoconferenza. Questo ha "
-        "portato a una maggiore flessibilità per i lavoratori, ma anche a nuove sfide, come il mantenimento di un "
-        "equilibrio tra vita privata e lavoro. La tecnologia ha anche avuto un impatto significativo sull'istruzione. "
-        "Le piattaforme di apprendimento online offrono corsi in una vasta gamma di argomenti, accessibili a chiunque "
-        "abbia una connessione Internet. Questo ha reso possibile per molte persone acquisire nuove competenze e "
-        "migliorare la loro formazione, indipendentemente dalla loro posizione geografica o disponibilità economica. "
-        "Nonostante i numerosi vantaggi, la tecnologia presenta anche sfide e rischi. La dipendenza dai dispositivi "
-        "digitali può influire negativamente sulla nostra salute mentale, e la protezione dei dati personali è "
-        "diventata una questione cruciale. Inoltre, l'automazione e l'intelligenza artificiale sollevano "
-        "preoccupazioni riguardo alla perdita di posti di lavoro in determinati settori. In definitiva, la tecnologia "
-        "è un potente strumento che ha il potenziale di migliorare la nostra vita in molti modi, ma deve essere "
-        "gestita con attenzione per garantire che i benefici siano equamente distribuiti ciao")
+with open("text.txt","r") as f:
+    text = f.read()
 
-### We define our vocabulary, composed of unique terms in the text
+### We define our vocabulary, composed of unique terms in the text.txt
 vocabulary = generate_vocabulary(text)
 print("Vocabulary size:", len(vocabulary))
 
 words = generate_words(text)
 
 ### We define the window_size, that is the length of the sequence we want to consider in order to predict the newt word
-window_size = 4
+window_size = 12
 print("Window size:", window_size, "\n")
 
 ### We create one-hot vectors for each word in our vocabulary (so its size is based on our vocabulary's size)
@@ -60,14 +35,18 @@ def index(word):
 
 print(f"We combine our one-hot vectors from {window_size}x{len(vocabulary)} to 1x{window_size * len(vocabulary)}\n")
 ### We are combining our one-hot vectors into a single one.
-def seq(vector):
-    s1 = vector[0]
-    s2 = vector[1]
-    s3 = vector[2]
-    s4 = vector[3]
+def seq(vector,RM):
+    # Get the indices of the words in the sequence
+    indices = [index(word) for word in vector]
 
-    combined_vector = onehot_vectors[[index(s1), index(s2), index(s3), index(s4)]].reshape(1, window_size * len(vocabulary))
-    return combined_vector
+    # Extract the one-hot vectors corresponding to these indices
+    combined_vector = onehot_vectors[indices]
+
+    reduced_sequence = np.matmul(combined_vector, RM)
+
+    reduced_sequence = np.reshape(reduced_sequence, (1, len(vocabulary)))
+
+    return reduced_sequence
 
 
 def create_CMM():
@@ -77,15 +56,14 @@ def create_CMM():
         sequence = words[s:s + window_size]
         target = words[s + window_size]
 
-        m1 = np.transpose(seq(sequence))
-        m1_reduced = np.matmul(RM, m1)
+        m1 = np.transpose(seq(sequence,RM))
 
         m2 = onehot_vectors[[index(target)]]
 
-        CMM += np.matmul(m1_reduced, m2)
+        CMM += np.matmul(m1, m2)
 
     print("Combined one-hot vector transposed and reduced x one-hot vector of the target")
-    print(np.shape(m1_reduced), "x", np.shape(m2))
+    print(np.shape(m1), "x", np.shape(m2))
 
     return CMM
 
@@ -93,20 +71,26 @@ def create_CMM():
 def generate_random_matrix(rows, cols, mean=0, std_dev=1):
     return np.random.normal(loc=mean, scale=std_dev, size=(rows, cols))
 
-RM = generate_random_matrix(len(vocabulary), window_size * len(vocabulary))
+RM = generate_random_matrix(len(vocabulary), int(len(vocabulary)/window_size))
 print("\nRandom Matrix (RM):", np.shape(RM), "\n", RM, "\n")
+
 CMM = create_CMM()
 print("\nCorrelation Matrix (CMM):", np.shape(CMM), "\n", CMM, "\n")
 
-current_text = "La tecnologia ha trasformato"
-print(current_text)
+current_text = words[:window_size]
+
+textout = ' '.join(current_text)
 
 for i in range(window_size, len(words)):
-    vector = words[i - 4:i]
+    vector = words[i - window_size:i]
 
-    sequence = seq(vector)
-    vector_reduced = np.matmul(sequence, np.transpose(RM))
+    sequence = seq(vector, RM)
 
-    output = np.matmul(vector_reduced, CMM)
-    print(vocabulary[np.argmax(output)])
+    output = np.matmul(sequence, CMM)
+    predicted_word = vocabulary[np.argmax(output)]
+    textout = textout + " " + predicted_word
+    #print(predicted_word)
+
+print("\nGenerated text:\n", textout)
+
 
