@@ -1,4 +1,4 @@
-EXEC = matrix_vector
+EXEC = base_matrix_vector
 SRC = $(EXEC).c
 NP = 3
 

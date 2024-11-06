@@ -1,13 +1,31 @@
 #include <stdio.h>
 #include <mpi.h>
 
-int main(int argc, char** argv) {
-    int i, n = 3;
-    float m1[3][3] = {{1, 2, 3}, {4, 5, 6}, {7, 8, 9}}; 
+// Write a code that computes the product between a matrix and a vector.
+
+float fdot(int n, float *v1, float *v2)
+{
+    int i;
+    float fd;
+
+    fd = 0.0;
+    for (i = 0; i < n; i++)
+        fd += v1[i] * v2[i];
+
+    return (fd);
+}
+
+int main(int argc, char **argv)
+{
+    int i, n = 3, tag = 0;
+    float m1[3][3] = {{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
     float v2[3] = {3, 3, 3};
-    float local_dot;
-    float result[3];  
-    int tag = 0;
+
+    float local_m1[3]; // ogni processo riceve una riga della matrice
+    float local_result; // risultato parziale per ciascun processo
+    
+    float result[3];
+    // float *result = NULL;
 
     MPI_Init(&argc, &argv);
 
@@ -17,31 +35,25 @@ int main(int argc, char** argv) {
     int my_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 
-    // Ogni processo riceve una riga della matrice
-    int local_n = (n / n_proc) +1;  // Supponiamo n divisibile per world_size
+    int local_n = (n / n_proc) + 1;
 
-    float local_m1[3];  // Memoria per una riga della matrice
-    float local_result;  // Risultato parziale per ciascun processo
-
-    // Distribuisci le righe della matrice ai vari processi
+    // le righe della matrice vengono distribuite ai vari processi
     MPI_Scatter(m1, n, MPI_FLOAT, local_m1, n, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
-    // Invia il vettore completo a tutti i processi
+    // il vettore che deve moltiplicare la matrice viene inviato a tutti i processi, visto che è in comune
     MPI_Bcast(v2, n, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
-    // Calcolo del prodotto scalare tra la riga ricevuta e il vettore
-    local_result = 0.0;
-    for (i = 0; i < n; i++) {
-        local_result += local_m1[i] * v2[i];
-    }
+    // calcolo del prodotto scalare tra la riga ricevuta e il vettore
+    local_result = fdot(n, local_m1, v2);
 
-    // Raccogli i risultati parziali in 'result' nel processo radice
+    // i risultati parziali vengono raccolti in 'result' nel processo radice
     MPI_Gather(&local_result, 1, MPI_FLOAT, result, 1, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
-    // Il processo radice stampa il risultato finale
-    if (my_rank == 0) {
+    if (my_rank == 0)
+    {
         printf("Product of matrix and vector is:\n");
-        for (i = 0; i < n; i++) {
+        for (i = 0; i < n; i++)
+        {
             printf("%f\n", result[i]);
         }
     }
