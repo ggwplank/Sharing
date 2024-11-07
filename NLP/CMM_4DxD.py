@@ -1,6 +1,5 @@
 import numpy as np
 
-### Generate the vocabulary
 def generate_vocabulary(text):
     
     return list(dict.fromkeys(text.lower().split()))
