@@ -1,5 +1,5 @@
 import numpy as np
-#prova
+
 def generate_vocabulary(text):
     
     return list(dict.fromkeys(text.lower().split()))
