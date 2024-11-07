@@ -35,8 +35,6 @@ int main(int argc, char **argv)
     int my_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 
-    int local_n = (n / n_proc) + 1;
-
     // le righe della matrice vengono distribuite ai vari processi
     MPI_Scatter(m1, n, MPI_FLOAT, local_m1, n, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
