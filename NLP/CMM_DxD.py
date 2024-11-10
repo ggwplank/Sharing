@@ -20,7 +20,7 @@ print("Vocabulary size:", len(vocabulary))
 words = generate_words(text)
 
 ### We define the window_size, that is the length of the sequence we want to consider in order to predict the newt word
-window_size = 12
+window_size = 35
 print("Window size:", window_size, "\n")
 
 ### We create one-hot vectors for each word in our vocabulary (so its size is based on our vocabulary's size)
@@ -40,17 +40,15 @@ def seq(vector,RM):
     indices = [index(word) for word in vector]
 
     # Extract the one-hot vectors corresponding to these indices
-    combined_vector = onehot_vectors[indices]
-
-    reduced_sequence = np.matmul(combined_vector, RM)
-
-    reduced_sequence = np.reshape(reduced_sequence, (1, len(vocabulary)))
+    combined_vector = RM[indices]
+  
+    reduced_sequence = np.reshape(combined_vector, (1, window_size*int(len(vocabulary)/window_size)))
 
     return reduced_sequence
 
 
 def create_CMM():
-    CMM = np.zeros((len(vocabulary), len(vocabulary)))
+    CMM = np.zeros((455, 455))
 
     for s in range(len(words) - window_size):
         sequence = words[s:s + window_size]
@@ -58,12 +56,10 @@ def create_CMM():
 
         m1 = np.transpose(seq(sequence,RM))
 
-        m2 = onehot_vectors[[index(target)]]
-
-        CMM += np.matmul(m1, m2)
+        CMM[:,index(target)] += m1[:,0]
 
     print("Combined one-hot vector transposed and reduced x one-hot vector of the target")
-    print(np.shape(m1), "x", np.shape(m2))
+
 
     return CMM
 
@@ -72,6 +68,7 @@ def generate_random_matrix(rows, cols, mean=0, std_dev=1):
     return np.random.normal(loc=mean, scale=std_dev, size=(rows, cols))
 
 RM = generate_random_matrix(len(vocabulary), int(len(vocabulary)/window_size))
+RM2 = generate_random_matrix(455, 455)
 print("\nRandom Matrix (RM):", np.shape(RM), "\n", RM, "\n")
 
 CMM = create_CMM()
@@ -92,5 +89,14 @@ for i in range(window_size, len(words)):
     #print(predicted_word)
 
 print("\nGenerated text:\n", textout)
+
+#check text
+to_check = generate_words(textout)
+count = 0
+for i in range(len(words)):
+    if words[i] == to_check[i]:
+        count += 1
+print("\n\nAccuracy:",count/len(words)*100,"%\n")
+
 
 
