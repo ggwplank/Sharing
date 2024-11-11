@@ -26,13 +26,19 @@ int main(int argc, char** argv) {
     float local_row[local_n];  // Memoria per i dati locali di una singola riga
     float local_v2[local_n];   // Memoria per il segmento locale di v2
 
+    /*
+    
+    SEPARIAMO ED INVIAMO V2
+    
+    */
+    
     // Configura counts e displs per la distribuzione di v2
     int counts_v2[n_proc], displs_v2[n_proc];
     int offset = 0;
     for (int p = 0; p < n_proc; p++) {
-        counts_v2[p] = n / n_proc + (p < n % n_proc ? 1 : 0);
+        counts_v2[p] = n / n_proc + (p < n % n_proc ? 1 : 0); //calcolo del numero di elementi che il processo riceve
         displs_v2[p] = offset;
-        offset += counts_v2[p];
+        offset += counts_v2[p]; //Posizione da cui il processo deve partire
     }
 
     // Distribuisci solo le parti necessarie di v2 a ciascun processo
@@ -41,6 +47,11 @@ int main(int argc, char** argv) {
         printf("Hello %d, my vector is %f,%f\n", my_rank,local_v2[0],local_v2[1]);
     }
 
+    /*
+    
+    SEPARIAMO ED INVIAMO OGNI RIGA DELLA MATRICE
+
+    */
 
     int j;
     // Distribuisci e calcola il prodotto per ogni riga
