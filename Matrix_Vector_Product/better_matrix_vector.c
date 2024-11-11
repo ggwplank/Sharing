@@ -11,6 +11,27 @@ float fdot(int n, float *v1, float *v2) {
     return fd;
 }
 
+void write_to_file(const char *filename, int n, double elapsed_time, int rank) {
+    if(rank == 0) {
+        FILE *file = fopen(filename, "a");
+        if (file) {
+            fprintf(file, "%d, %f\n", n, elapsed_time);
+            fclose(file);
+        } else {
+        printf("Errore nell'apertura del file.\n");
+        }
+    }
+}
+
+
+void free_memory(int n, float **m1, float *v2, float *result) {
+    for (int i = 0; i < n; i++)
+        free(m1[i]);
+    free(m1);
+    free(v2);
+    free(result);
+}
+
 int main(int argc, char** argv) {
     if (argc != 2) {
         printf("Usage: %s <dimensione_matrice>\n", argv[0]);
@@ -120,21 +141,10 @@ int main(int argc, char** argv) {
     */
 
     // scrittura su file
-    if (custom_rank == 0) {
-        FILE *file = fopen("results.csv", "a");
-        if (file) {
-            fprintf(file, "%d, %f\n", n, elapsed_time);
-            fclose(file);
-        } else {
-            printf("Errore nell'apertura del file.\n");
-        }
-    }
+    write_to_file("results.csv", n, elapsed_time, custom_rank);    
 
-    // deallocazione memoria
-    for (i = 0; i < n; i++)
-        free(m1[i]);
-    free(m1);
-    free(v2);
+    free_memory(n, m1, v2, result);
+
     free(local_row);
     free(local_v2);
     free(result);
