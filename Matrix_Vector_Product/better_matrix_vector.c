@@ -22,12 +22,13 @@ void write_to_file(const char* filename, int n, double elapsed_time) {
 }
 
 int main(int argc, char** argv) {
-    if (argc != 2) {
-        printf("Usage: %s <dimensione_matrice>\n", argv[0]);
+    if (argc != 3) {
+        printf("Invalid params");
         return 1;
     }
 
     int i, n = atoi(argv[1]); // dimensione matrice NxN passata come argomento
+    char* result_file_name = argv[2];
 
     MPI_Init(&argc, &argv);
 
@@ -131,7 +132,7 @@ int main(int argc, char** argv) {
 
     // scrittura su file
     if (custom_rank == 0) {
-        write_to_file("results.csv", n, elapsed_time);
+        write_to_file(result_file_name, n, elapsed_time);
     }
 
     // deallocazione memoria
