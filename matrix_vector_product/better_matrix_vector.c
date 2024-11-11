@@ -3,6 +3,11 @@
 #include <time.h>
 #include <mpi.h>
 
+int compare(const void*a,const void*b){
+    double diff = *(double*)a-*(double*)b;
+    return (diff>0)-(diff<0);
+}
+
 float fdot(int n, float *v1, float *v2) {
     float fd = 0.0;
     for (int i = 0; i < n; i++) {
@@ -118,6 +123,9 @@ int main(int argc, char** argv) {
     float local_result = 0.0;
     float *result = (float *)malloc(n * sizeof(float));
 
+    double times[21];
+    for (int run=0;run<21;run++){
+
     // processo radice genera casualmente m1 e v2
     if (custom_rank == 0)
         generate_matrix_and_vector(n, m1, v2);
@@ -131,7 +139,22 @@ int main(int argc, char** argv) {
     // sincronizza i processi dopo il calcolo prima di calcolare il tempo
     MPI_Barrier(custom_comm);
     double end_time = MPI_Wtime();
-    double elapsed_time = end_time - start_time;
+    if(custom_rank==0){
+        times[run]= end_time - start_time;
+    }
+    }
+    if(custom_rank==0){
+        qsort(times+1,21-1,__SIZEOF_DOUBLE__,compare);
+        double median;
+        int middle = (21-1)/2;
+        if ((21-1)%2==0){
+            median = (times[middle]+times[middle+1])/2.0;
+        }else{
+            median=times[middle];
+        }
+        // scrittura su file
+        write_to_file(result_file_name, n, median);
+    }
 
     /*
     // stampa risultato
@@ -141,10 +164,6 @@ int main(int argc, char** argv) {
             printf("%f\n", result[i]);
     }
     */
-
-    // scrittura su file
-    if (custom_rank == 0)
-        write_to_file(result_file_name, n, elapsed_time);
 
     // deallocazione memoria
     free_memory(n, m1, v2, result);
