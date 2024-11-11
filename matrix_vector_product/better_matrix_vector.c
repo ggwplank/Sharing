@@ -11,6 +11,48 @@ float fdot(int n, float *v1, float *v2) {
     return fd;
 }
 
+void generate_matrix_and_vector(int n, float **m1, float *v2) {
+    srand(time(NULL));
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++)
+            m1[i][j] = (float)(rand() % 10);
+        
+        v2[i] = (float)(rand() % 10);
+    }
+}
+
+void scatter_data(int n, float *data, float *local_data, int custom_rank, int custom_size, MPI_Comm custom_comm) {
+    int local_n = n / custom_size + (custom_rank < n % custom_size ? 1 : 0);    // numero di elementi locali per ogni processo
+    int counts[custom_size], displs[custom_size];
+    int offset = 0;
+
+    for(int p = 0; p < custom_size; p++) {
+        counts[p] = n / custom_size + (p < n % custom_size ? 1 : 0);
+        displs[p] = offset;
+        offset += counts[p];
+    }
+
+    MPI_Scatterv(data, counts, displs, MPI_FLOAT, local_data, local_n, MPI_FLOAT, 0, custom_comm);
+}
+
+void compute_local_results(int n, float **m1, float *v2, float *result, int custom_rank, int custom_size, MPI_Comm custom_comm) {
+    int local_n = n / custom_size + (custom_rank < n % custom_size ? 1 : 0);
+    float *local_row = (float *)malloc(local_n * sizeof(float));
+    float *local_v2 = (float *)malloc(local_n * sizeof(float));
+    
+    // scatter v2
+    scatter_data(n, v2, local_v2, custom_rank, custom_size, custom_comm);
+
+    for(int i = 0; i < n; i++) {
+        scatter_data(n, m1[i], local_row, custom_rank, custom_size, custom_comm);
+        float local_result = fdot(local_n, local_row, local_v2);
+        MPI_Reduce(&local_result, &result[i], 1, MPI_FLOAT, MPI_SUM, 0, custom_comm);
+    }
+
+    free(local_row);
+    free(local_v2);
+}
+
 void write_to_file(const char* filename, int n, double elapsed_time) {
     FILE *file = fopen(filename, "a");
     if (file) {
@@ -21,13 +63,21 @@ void write_to_file(const char* filename, int n, double elapsed_time) {
     }
 }
 
+void free_memory(int n, float **m1, float *v2, float *result) {
+    for (int i = 0; i < n; i++)
+        free(m1[i]);
+    free(m1);
+    free(v2);
+    free(result);
+}
+
 int main(int argc, char** argv) {
     if (argc != 3) {
         printf("Invalid params");
         return 1;
     }
 
-    int i, n = atoi(argv[1]); // dimensione matrice NxN passata come argomento
+    int n = atoi(argv[1]); // dimensione matrice NxN passata come argomento
     char* result_file_name = argv[2];
 
     MPI_Init(&argc, &argv);
@@ -42,7 +92,7 @@ int main(int argc, char** argv) {
     MPI_Comm_group(MPI_COMM_WORLD, &world_group);
 
     int ranks[world_size];
-    for (i = 0; i < world_size; i++)
+    for (int i = 0; i < world_size; i++)
         ranks[i] = i;
 
     // crazione gruppo con tutti i rank del comunicatore globale
@@ -60,7 +110,7 @@ int main(int argc, char** argv) {
 
     // allocazione dinamica matrice e vettore
     float **m1 = (float **)malloc(n * sizeof(float *));
-    for (i = 0; i < n; i++)
+    for (int i = 0; i < n; i++)
         m1[i] = (float *)malloc(n * sizeof(float));
     
     float *v2 = (float *)malloc(n * sizeof(float));
@@ -69,52 +119,14 @@ int main(int argc, char** argv) {
     float *result = (float *)malloc(n * sizeof(float));
 
     // processo radice genera casualmente m1 e v2
-    if (custom_rank == 0) {
-        srand(time(NULL));
-        for (i = 0; i < n; i++) {
-            for (int j = 0; j < n; j++)
-                m1[i][j] = (float)(rand() % 10);
-            
-            v2[i] = (float)(rand() % 10);
-        }
-    }
+    if (custom_rank == 0)
+        generate_matrix_and_vector(n, m1, v2);
 
     // sincronizza processi prima di iniziare il calcolo
     MPI_Barrier(custom_comm);
     double start_time = MPI_Wtime();
 
-    int local_n = n / custom_size + (custom_rank < n % custom_size ? 1 : 0);    // numero di elementi locali per ogni processo
-    float *local_row = (float *)malloc(local_n * sizeof(float));    // riga locale
-    float *local_v2 = (float *)malloc(local_n * sizeof(float)); // vettore locale
-
-    // counts e displs per la Scatterv di v2
-    int counts_v2[custom_size], displs_v2[custom_size];
-    int offset = 0;
-    for (int p = 0; p < custom_size; p++) {
-        counts_v2[p] = n / custom_size + (p < n % custom_size ? 1 : 0);
-        displs_v2[p] = offset;
-        offset += counts_v2[p];
-    }
-
-    MPI_Scatterv(v2, counts_v2, displs_v2, MPI_FLOAT, local_v2, local_n, MPI_FLOAT, 0, custom_comm);
-
-    // counts e displs per la Scatterv di m1
-    for (i = 0; i < n; i++) {
-        int counts[custom_size], displs[custom_size];
-        offset = 0;
-        for (int p = 0; p < custom_size; p++) {
-            counts[p] = n / custom_size + (p < n % custom_size ? 1 : 0);
-            displs[p] = offset;
-            offset += counts[p];
-        }
-
-        MPI_Scatterv(m1[i], counts, displs, MPI_FLOAT, local_row, local_n, MPI_FLOAT, 0, custom_comm);
-
-        local_result = fdot(local_n, local_row, local_v2);
-
-        // raccoglie i risultati parziali e somma i risultati nel processo radice
-        MPI_Reduce(&local_result, &result[i], 1, MPI_FLOAT, MPI_SUM, 0, custom_comm);
-    }
+    compute_local_results(n, m1, v2, result, custom_rank, custom_size, custom_comm);
 
     // sincronizza i processi dopo il calcolo prima di calcolare il tempo
     MPI_Barrier(custom_comm);
@@ -131,18 +143,11 @@ int main(int argc, char** argv) {
     */
 
     // scrittura su file
-    if (custom_rank == 0) {
+    if (custom_rank == 0)
         write_to_file(result_file_name, n, elapsed_time);
-    }
 
     // deallocazione memoria
-    for (i = 0; i < n; i++)
-        free(m1[i]);
-    free(m1);
-    free(v2);
-    free(local_row);
-    free(local_v2);
-    free(result);
+    free_memory(n, m1, v2, result);
 
     // deallocazione gruppo e comunicatore personalizzato
     MPI_Group_free(&custom_group);

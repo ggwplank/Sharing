@@ -1,7 +1,7 @@
 EXEC = better_matrix_vector
 SRC = $(EXEC).c
 NP = 3
-SIZE = 4  # Dimensione di default della matrice
+SIZE = 4	# Dimensione di default della matrice
 FILE = "results.csv"
 
 all: $(EXEC)
