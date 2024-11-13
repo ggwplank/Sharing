@@ -48,7 +48,7 @@ def seq(vector,RM):
 
 
 def create_CMM():
-    CMM = np.zeros((455, 455))
+    CMM = np.zeros((len(vocabulary), len(vocabulary)))
 
     for s in range(len(words) - window_size):
         sequence = words[s:s + window_size]
@@ -68,7 +68,7 @@ def generate_random_matrix(rows, cols, mean=0, std_dev=1):
     return np.random.normal(loc=mean, scale=std_dev, size=(rows, cols))
 
 RM = generate_random_matrix(len(vocabulary), int(len(vocabulary)/window_size))
-RM2 = generate_random_matrix(455, 455)
+RM2 = generate_random_matrix(len(vocabulary), len(vocabulary))
 print("\nRandom Matrix (RM):", np.shape(RM), "\n", RM, "\n")
 
 CMM = create_CMM()
